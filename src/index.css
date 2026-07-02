@@ -1,0 +1,83 @@
+:root {
+  font-family: 'Avenir Next', Avenir, 'Segoe UI', system-ui, sans-serif;
+  color: #1a222b;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+.app {
+  position: relative;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* Doubled class beats maplibre-gl.css's `.maplibregl-map { position: relative }` */
+.map-container.map-container {
+  position: absolute;
+  inset: 0;
+}
+
+.brand {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  padding: 10px 16px;
+  border-radius: 12px;
+  background: rgba(16, 24, 32, 0.72);
+  backdrop-filter: blur(8px);
+  color: #f2f6fa;
+  pointer-events: none;
+}
+
+.brand h1 {
+  font-size: 1.15rem;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+}
+
+.brand p {
+  font-size: 0.75rem;
+  opacity: 0.75;
+}
+
+.basemap-toggle {
+  position: absolute;
+  top: 16px;
+  right: 52px;
+  display: flex;
+  border-radius: 10px;
+  overflow: hidden;
+  background: rgba(16, 24, 32, 0.72);
+  backdrop-filter: blur(8px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+}
+
+.basemap-toggle button {
+  appearance: none;
+  border: none;
+  background: transparent;
+  color: #cdd8e2;
+  font: inherit;
+  font-size: 0.85rem;
+  padding: 8px 14px;
+  cursor: pointer;
+}
+
+.basemap-toggle button:hover {
+  color: #ffffff;
+}
+
+.basemap-toggle button.active {
+  background: #3d7bb8;
+  color: #ffffff;
+}
