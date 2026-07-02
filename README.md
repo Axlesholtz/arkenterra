@@ -29,6 +29,9 @@ npm run dev
 2. ✅ Slope-angle + aspect overlays, computed client-side from DEM tiles
    via custom `slope://` / `aspect://` protocols (Horn gradient, avalanche
    slope bands, no server pipeline). Still to come: contours
-3. Route drawing, elevation profile, distance/gain stats, GPX export,
-   localStorage persistence + shareable URL routes
-4. Later: light backend (accounts, saved/shared routes), community content
+3. ✅ Route drawing (click to add, drag to adjust, right-click to delete),
+   elevation profile with distance/gain/loss stats, GPX export, saved
+   routes in localStorage, shareable URLs (route polyline-encoded in the
+   hash alongside the camera)
+4. Next: contours, more overlay polish
+5. Later: light backend (accounts, saved/shared routes), community content

@@ -137,6 +137,38 @@ async function paddedElevations(
   return grid
 }
 
+/**
+ * Elevation at a point, bilinearly interpolated from the cached DEM tiles.
+ * Sampled at the overlay zoom by default — matches the DEM's native
+ * resolution in BC.
+ */
+export async function elevationAt(
+  lng: number,
+  lat: number,
+  zoom = DEM_OVERLAY_MAXZOOM,
+): Promise<number | null> {
+  const n = 1 << zoom
+  const xf = ((lng + 180) / 360) * n
+  const latRad = (lat * Math.PI) / 180
+  const yf =
+    ((1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2) * n
+  const tx = Math.floor(xf)
+  const ty = Math.floor(yf)
+  const dem = await fetchDem(zoom, tx, ty)
+  if (!dem) return null
+  const px = (xf - tx) * TILE - 0.5
+  const py = (yf - ty) * TILE - 0.5
+  const x0 = Math.min(TILE - 1, Math.max(0, Math.floor(px)))
+  const y0 = Math.min(TILE - 1, Math.max(0, Math.floor(py)))
+  const x1 = Math.min(TILE - 1, x0 + 1)
+  const y1 = Math.min(TILE - 1, y0 + 1)
+  const fx = Math.min(1, Math.max(0, px - x0))
+  const fy = Math.min(1, Math.max(0, py - y0))
+  const top = dem[y0 * TILE + x0] * (1 - fx) + dem[y0 * TILE + x1] * fx
+  const bottom = dem[y1 * TILE + x0] * (1 - fx) + dem[y1 * TILE + x1] * fx
+  return top * (1 - fy) + bottom * fy
+}
+
 function writeSlope(px: Uint8ClampedArray, o: number, slopeDeg: number) {
   for (let i = SLOPE_BANDS.length - 1; i >= 0; i--) {
     const band = SLOPE_BANDS[i]

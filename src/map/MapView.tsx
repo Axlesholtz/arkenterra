@@ -1,5 +1,7 @@
 import { useEffect, useRef } from 'react'
 import maplibregl from 'maplibre-gl'
+import type { GeoJSONSource, MapLayerMouseEvent } from 'maplibre-gl'
+import type { FeatureCollection } from 'geojson'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import {
   INITIAL_VIEW,
@@ -15,6 +17,7 @@ import {
   registerDemProtocols,
   type DemOverlayKind,
 } from './demProtocol'
+import type { LngLat } from '../route/geo'
 
 registerDemProtocols()
 
@@ -23,15 +26,76 @@ export type OverlayId = DemOverlayKind | 'none'
 interface MapViewProps {
   basemap: BasemapId
   overlay: OverlayId
+  route: LngLat[]
+  drawing: boolean
+  hoverPoint: LngLat | null
+  fitRouteSignal: number
+  onRouteChange: (coords: LngLat[]) => void
+  onFinishDrawing: () => void
 }
 
-export default function MapView({ basemap, overlay }: MapViewProps) {
+function lineData(coords: LngLat[]): FeatureCollection {
+  return {
+    type: 'FeatureCollection',
+    features:
+      coords.length >= 2
+        ? [
+            {
+              type: 'Feature',
+              geometry: { type: 'LineString', coordinates: coords },
+              properties: {},
+            },
+          ]
+        : [],
+  }
+}
+
+function vertexData(coords: LngLat[]): FeatureCollection {
+  return {
+    type: 'FeatureCollection',
+    features: coords.map((c, index) => ({
+      type: 'Feature',
+      geometry: { type: 'Point', coordinates: c },
+      properties: { index },
+    })),
+  }
+}
+
+function pointData(pt: LngLat | null): FeatureCollection {
+  return {
+    type: 'FeatureCollection',
+    features: pt
+      ? [{ type: 'Feature', geometry: { type: 'Point', coordinates: pt }, properties: {} }]
+      : [],
+  }
+}
+
+export default function MapView({
+  basemap,
+  overlay,
+  route,
+  drawing,
+  hoverPoint,
+  fitRouteSignal,
+  onRouteChange,
+  onFinishDrawing,
+}: MapViewProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<maplibregl.Map | null>(null)
   const basemapRef = useRef(basemap)
   basemapRef.current = basemap
   const overlayRef = useRef(overlay)
   overlayRef.current = overlay
+  const routeRef = useRef(route)
+  routeRef.current = route
+  const drawingRef = useRef(drawing)
+  drawingRef.current = drawing
+  const onRouteChangeRef = useRef(onRouteChange)
+  onRouteChangeRef.current = onRouteChange
+  const onFinishDrawingRef = useRef(onFinishDrawing)
+  onFinishDrawingRef.current = onFinishDrawing
+  // A vertex drag ends with a synthetic click we must not treat as "add point"
+  const suppressClickRef = useRef(false)
 
   useEffect(() => {
     if (!containerRef.current) return
@@ -41,6 +105,7 @@ export default function MapView({ basemap, overlay }: MapViewProps) {
       style: TOPO_STYLE_URL,
       ...INITIAL_VIEW,
       maxPitch: 85,
+      hash: 'map',
       attributionControl: { compact: true },
     })
     mapRef.current = map
@@ -103,6 +168,51 @@ export default function MapView({ basemap, overlay }: MapViewProps) {
         )
       }
 
+      // Route layers go on top of everything, labels included — the route is
+      // the user's own content.
+      map.addSource('route', { type: 'geojson', data: lineData(routeRef.current) })
+      map.addSource('route-vertices', {
+        type: 'geojson',
+        data: vertexData(routeRef.current),
+      })
+      map.addSource('route-hover', { type: 'geojson', data: pointData(null) })
+      map.addLayer({
+        id: 'route-casing',
+        type: 'line',
+        source: 'route',
+        layout: { 'line-cap': 'round', 'line-join': 'round' },
+        paint: { 'line-color': '#ffffff', 'line-width': 6 },
+      })
+      map.addLayer({
+        id: 'route-line',
+        type: 'line',
+        source: 'route',
+        layout: { 'line-cap': 'round', 'line-join': 'round' },
+        paint: { 'line-color': '#ff5c1f', 'line-width': 3.5 },
+      })
+      map.addLayer({
+        id: 'route-vertex',
+        type: 'circle',
+        source: 'route-vertices',
+        paint: {
+          'circle-radius': 5.5,
+          'circle-color': '#ffffff',
+          'circle-stroke-color': '#ff5c1f',
+          'circle-stroke-width': 2,
+        },
+      })
+      map.addLayer({
+        id: 'route-hover-point',
+        type: 'circle',
+        source: 'route-hover',
+        paint: {
+          'circle-radius': 7,
+          'circle-color': '#1d6ef5',
+          'circle-stroke-color': '#ffffff',
+          'circle-stroke-width': 2,
+        },
+      })
+
       map.setTerrain({ source: 'terrain-dem', exaggeration: TERRAIN_EXAGGERATION })
       map.setSky({
         'sky-color': '#8fb8dd',
@@ -113,6 +223,51 @@ export default function MapView({ basemap, overlay }: MapViewProps) {
         'fog-ground-blend': 0.9,
         'atmosphere-blend': ['interpolate', ['linear'], ['zoom'], 0, 1, 10, 0.4],
       })
+    })
+
+    map.on('click', (e) => {
+      if (suppressClickRef.current) {
+        suppressClickRef.current = false
+        return
+      }
+      if (!drawingRef.current) return
+      onRouteChangeRef.current([...routeRef.current, [e.lngLat.lng, e.lngLat.lat]])
+    })
+
+    map.on('dblclick', (e) => {
+      if (!drawingRef.current) return
+      e.preventDefault() // keep double-click-zoom while not drawing
+      onFinishDrawingRef.current()
+    })
+
+    map.on('mouseenter', 'route-vertex', () => {
+      if (!drawingRef.current) map.getCanvas().style.cursor = 'grab'
+    })
+    map.on('mouseleave', 'route-vertex', () => {
+      map.getCanvas().style.cursor = drawingRef.current ? 'crosshair' : ''
+    })
+
+    map.on('mousedown', 'route-vertex', (e: MapLayerMouseEvent) => {
+      const index = e.features?.[0]?.properties?.index
+      if (typeof index !== 'number') return
+      e.preventDefault() // don't pan the map while dragging a vertex
+      const onMove = (ev: maplibregl.MapMouseEvent) => {
+        const coords = [...routeRef.current]
+        coords[index] = [ev.lngLat.lng, ev.lngLat.lat]
+        onRouteChangeRef.current(coords)
+      }
+      map.on('mousemove', onMove)
+      map.once('mouseup', () => {
+        map.off('mousemove', onMove)
+        suppressClickRef.current = true
+      })
+    })
+
+    map.on('contextmenu', 'route-vertex', (e: MapLayerMouseEvent) => {
+      const index = e.features?.[0]?.properties?.index
+      if (typeof index !== 'number') return
+      e.originalEvent.preventDefault()
+      onRouteChangeRef.current(routeRef.current.filter((_, i) => i !== index))
     })
 
     return () => {
@@ -149,6 +304,37 @@ export default function MapView({ basemap, overlay }: MapViewProps) {
       )
     }
   }, [overlay])
+
+  useEffect(() => {
+    const map = mapRef.current
+    const source = map?.getSource('route') as GeoJSONSource | undefined
+    if (!map || !source) return
+    source.setData(lineData(route))
+    ;(map.getSource('route-vertices') as GeoJSONSource).setData(vertexData(route))
+  }, [route])
+
+  useEffect(() => {
+    const map = mapRef.current
+    const source = map?.getSource('route-hover') as GeoJSONSource | undefined
+    source?.setData(pointData(hoverPoint))
+  }, [hoverPoint])
+
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map) return
+    map.getCanvas().style.cursor = drawing ? 'crosshair' : ''
+  }, [drawing])
+
+  useEffect(() => {
+    const map = mapRef.current
+    const coords = routeRef.current
+    if (!map || fitRouteSignal === 0 || coords.length < 2) return
+    const bounds = coords.reduce(
+      (b, c) => b.extend(c),
+      new maplibregl.LngLatBounds(coords[0], coords[0]),
+    )
+    map.fitBounds(bounds, { padding: 80, duration: 1200 })
+  }, [fitRouteSignal])
 
   return <div ref={containerRef} className="map-container" />
 }

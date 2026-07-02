@@ -93,6 +93,12 @@ body,
   position: absolute;
   bottom: 44px;
   left: 16px;
+  max-width: 300px;
+}
+
+/* Keep the legend clear of the elevation profile when both are visible */
+.app:has(.profile-panel) .legend {
+  bottom: 180px;
   display: flex;
   align-items: center;
   flex-wrap: wrap;
@@ -120,4 +126,169 @@ body,
   width: 14px;
   height: 14px;
   border-radius: 3px;
+}
+
+.route-panel {
+  position: absolute;
+  top: 92px;
+  left: 16px;
+  width: 216px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(16, 24, 32, 0.72);
+  backdrop-filter: blur(8px);
+  color: #e6edf3;
+  font-size: 0.85rem;
+}
+
+.route-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.route-actions button {
+  appearance: none;
+  border: none;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.12);
+  color: #e6edf3;
+  font: inherit;
+  font-size: 0.8rem;
+  padding: 6px 10px;
+  cursor: pointer;
+  flex: 1;
+}
+
+.route-actions button:hover {
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.route-actions button.active {
+  background: #3d7bb8;
+  color: #ffffff;
+}
+
+.route-actions button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.route-name {
+  appearance: none;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.25);
+  color: #f2f6fa;
+  font: inherit;
+  font-size: 0.85rem;
+  padding: 6px 8px;
+}
+
+.route-name:focus {
+  outline: none;
+  border-color: #3d7bb8;
+}
+
+.route-hint {
+  font-size: 0.7rem;
+  line-height: 1.35;
+  opacity: 0.65;
+}
+
+.saved-routes {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  border-top: 1px solid rgba(255, 255, 255, 0.14);
+  padding-top: 8px;
+}
+
+.saved-title {
+  font-size: 0.7rem;
+  font-weight: 650;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  opacity: 0.6;
+  margin-bottom: 2px;
+}
+
+.saved-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.saved-name {
+  appearance: none;
+  border: none;
+  background: transparent;
+  color: #a9c7e8;
+  font: inherit;
+  font-size: 0.8rem;
+  text-align: left;
+  padding: 3px 0;
+  cursor: pointer;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.saved-name:hover {
+  color: #d7e7f7;
+}
+
+.saved-delete {
+  appearance: none;
+  border: none;
+  background: transparent;
+  color: #e6edf3;
+  opacity: 0.5;
+  font-size: 0.95rem;
+  cursor: pointer;
+  padding: 0 4px;
+}
+
+.saved-delete:hover {
+  opacity: 1;
+}
+
+.profile-panel {
+  position: absolute;
+  bottom: 40px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(660px, calc(100% - 500px));
+  min-width: 360px;
+  padding: 8px 12px 6px;
+  border-radius: 12px;
+  background: rgba(16, 24, 32, 0.78);
+  backdrop-filter: blur(8px);
+  color: #e6edf3;
+}
+
+.profile-stats {
+  display: flex;
+  gap: 14px;
+  font-size: 0.78rem;
+  padding-bottom: 4px;
+}
+
+.profile-hover-readout {
+  margin-left: auto;
+  color: #a9c7e8;
+}
+
+.profile-chart {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.profile-axis {
+  fill: rgba(230, 237, 243, 0.6);
+  font-size: 10px;
 }
