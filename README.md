@@ -26,7 +26,9 @@ npm run dev
 ## Roadmap
 
 1. ✅ 3D terrain over BC, satellite/topo switching, smooth navigation
-2. Slope-angle + aspect overlays (client-side from DEM), contours
+2. ✅ Slope-angle + aspect overlays, computed client-side from DEM tiles
+   via custom `slope://` / `aspect://` protocols (Horn gradient, avalanche
+   slope bands, no server pipeline). Still to come: contours
 3. Route drawing, elevation profile, distance/gain stats, GPX export,
    localStorage persistence + shareable URL routes
 4. Later: light backend (accounts, saved/shared routes), community content

@@ -10,16 +10,28 @@ import {
   terrainSource,
   type BasemapId,
 } from './config'
+import {
+  DEM_OVERLAY_MAXZOOM,
+  registerDemProtocols,
+  type DemOverlayKind,
+} from './demProtocol'
+
+registerDemProtocols()
+
+export type OverlayId = DemOverlayKind | 'none'
 
 interface MapViewProps {
   basemap: BasemapId
+  overlay: OverlayId
 }
 
-export default function MapView({ basemap }: MapViewProps) {
+export default function MapView({ basemap, overlay }: MapViewProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<maplibregl.Map | null>(null)
   const basemapRef = useRef(basemap)
   basemapRef.current = basemap
+  const overlayRef = useRef(overlay)
+  overlayRef.current = overlay
 
   useEffect(() => {
     if (!containerRef.current) return
@@ -70,6 +82,27 @@ export default function MapView({ basemap }: MapViewProps) {
         firstSymbolId,
       )
 
+      for (const kind of ['slope', 'aspect'] as const) {
+        map.addSource(kind, {
+          type: 'raster',
+          tiles: [`${kind}://{z}/{x}/{y}`],
+          tileSize: 256,
+          maxzoom: DEM_OVERLAY_MAXZOOM,
+        })
+        map.addLayer(
+          {
+            id: `${kind}-overlay`,
+            type: 'raster',
+            source: kind,
+            layout: {
+              visibility: overlayRef.current === kind ? 'visible' : 'none',
+            },
+            paint: { 'raster-fade-duration': 100 },
+          },
+          firstSymbolId,
+        )
+      }
+
       map.setTerrain({ source: 'terrain-dem', exaggeration: TERRAIN_EXAGGERATION })
       map.setSky({
         'sky-color': '#8fb8dd',
@@ -104,6 +137,18 @@ export default function MapView({ basemap }: MapViewProps) {
       basemap === 'satellite' ? 0.15 : 0.35,
     )
   }, [basemap])
+
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !map.getLayer('slope-overlay')) return
+    for (const kind of ['slope', 'aspect'] as const) {
+      map.setLayoutProperty(
+        `${kind}-overlay`,
+        'visibility',
+        overlay === kind ? 'visible' : 'none',
+      )
+    }
+  }, [overlay])
 
   return <div ref={containerRef} className="map-container" />
 }
