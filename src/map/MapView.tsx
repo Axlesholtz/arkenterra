@@ -3,9 +3,11 @@ import maplibregl from 'maplibre-gl'
 import type { GeoJSONSource, MapLayerMouseEvent } from 'maplibre-gl'
 import type { FeatureCollection } from 'geojson'
 import 'maplibre-gl/dist/maplibre-gl.css'
+import mlcontour from 'maplibre-contour'
 import {
   INITIAL_VIEW,
   TERRAIN_EXAGGERATION,
+  TERRARIUM_TILES,
   TOPO_STYLE_URL,
   hillshadeSource,
   satelliteSource,
@@ -20,6 +22,17 @@ import {
 import type { LngLat } from '../route/geo'
 
 registerDemProtocols()
+
+// Contour isolines computed in a web worker from the same Terrarium tiles.
+// maxzoom 12 matches BC's ~20 m DEM: higher zooms would trace interpolation
+// noise instead of terrain.
+const contourSource = new mlcontour.DemSource({
+  url: TERRARIUM_TILES,
+  encoding: 'terrarium',
+  maxzoom: 12,
+  worker: true,
+})
+contourSource.setupMaplibre(maplibregl)
 
 export type OverlayId = DemOverlayKind | 'none'
 
@@ -168,6 +181,67 @@ export default function MapView({
         )
       }
 
+      map.addSource('contours', {
+        type: 'vector',
+        tiles: [
+          contourSource.contourProtocolUrl({
+            multiplier: 1,
+            thresholds: {
+              // zoom: [minor, major] interval in metres
+              10: [500, 2500],
+              11: [200, 1000],
+              12: [100, 500],
+              14: [50, 250],
+              15: [20, 100],
+            },
+            contourLayer: 'contours',
+            elevationKey: 'ele',
+            levelKey: 'level',
+            extent: 4096,
+            buffer: 1,
+          }),
+        ],
+        maxzoom: 15,
+      })
+      const contoursVisible =
+        basemapRef.current === 'topo' ? 'visible' : 'none'
+      map.addLayer(
+        {
+          id: 'contour-lines',
+          type: 'line',
+          source: 'contours',
+          'source-layer': 'contours',
+          layout: { visibility: contoursVisible },
+          paint: {
+            'line-color': 'rgba(125, 92, 60, 0.55)',
+            'line-width': ['match', ['get', 'level'], 1, 1.1, 0.45],
+          },
+        },
+        firstSymbolId,
+      )
+      map.addLayer(
+        {
+          id: 'contour-labels',
+          type: 'symbol',
+          source: 'contours',
+          'source-layer': 'contours',
+          filter: ['>', ['get', 'level'], 0],
+          layout: {
+            visibility: contoursVisible,
+            'symbol-placement': 'line',
+            'text-size': 10,
+            'text-field': ['concat', ['number-format', ['get', 'ele'], {}], ' m'],
+            'text-font': ['Noto Sans Regular'],
+          },
+          paint: {
+            'text-color': '#6b4f33',
+            'text-halo-color': 'rgba(255,255,255,0.85)',
+            'text-halo-width': 1,
+          },
+        },
+        firstSymbolId,
+      )
+
       // Route layers go on top of everything, labels included — the route is
       // the user's own content.
       map.addSource('route', { type: 'geojson', data: lineData(routeRef.current) })
@@ -291,6 +365,9 @@ export default function MapView({
       'hillshade-exaggeration',
       basemap === 'satellite' ? 0.15 : 0.35,
     )
+    for (const id of ['contour-lines', 'contour-labels']) {
+      map.setLayoutProperty(id, 'visibility', basemap === 'topo' ? 'visible' : 'none')
+    }
   }, [basemap])
 
   useEffect(() => {

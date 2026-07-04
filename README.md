@@ -1,7 +1,9 @@
 # ArkenTerra
 
-3D terrain maps for the BC backcountry, in the browser. Working title — loosely
-affiliated with ArkenMap (iOS offline topo maps).
+3D terrain maps for the BC backcountry, in the browser. Loosely affiliated
+with ArkenMap (iOS offline topo maps).
+
+**Live: <https://axlesholtz.github.io/arkenterra/>**
 
 Free-flying 3D terrain with switchable satellite/topo basemaps. Planned:
 slope-angle and aspect overlays computed client-side from elevation tiles,
@@ -33,5 +35,10 @@ npm run dev
    elevation profile with distance/gain/loss stats, GPX export, saved
    routes in localStorage, shareable URLs (route polyline-encoded in the
    hash alongside the camera)
-4. Next: contours, more overlay polish
+4. ✅ Contour lines in topo mode ([maplibre-contour](https://github.com/onthegomap/maplibre-contour),
+   computed in a web worker from the same elevation tiles)
 5. Later: light backend (accounts, saved/shared routes), community content
+
+## Deploy
+
+Pushes to `main` deploy to GitHub Pages via `.github/workflows/deploy.yml`.

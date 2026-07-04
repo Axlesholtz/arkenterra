@@ -9,7 +9,7 @@ export const TOPO_STYLE_URL = 'https://tiles.openfreemap.org/styles/liberty'
  * Global elevation tiles (Terrarium encoding) from the public AWS Open Data
  * bucket — free, keyless. Native detail runs out around z15 (~30 m in BC).
  */
-const TERRARIUM_TILES =
+export const TERRARIUM_TILES =
   'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png'
 
 const TERRAIN_ATTRIBUTION =
