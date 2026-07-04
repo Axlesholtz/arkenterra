@@ -38,9 +38,7 @@ npm run dev
 4. ✅ Contour lines in topo mode ([maplibre-contour](https://github.com/onthegomap/maplibre-contour),
    computed in a web worker from the same elevation tiles)
 5. ✅ Open data layers: trails/peaks/huts styled from the OpenFreeMap tiles;
-   BC parks & rec sites and current wildfires (DataBC WMS); Avalanche
-   Canada forecast regions with danger-rating colours and click-through
-   popups (grey "Summer Conditions" off-season)
+   BC parks & rec sites and current wildfires (DataBC WMS)
 6. Later: light backend (accounts, saved/shared routes), community content
 
 ## Deploy

@@ -29,7 +29,6 @@ const OVERLAYS: { id: OverlayId; label: string }[] = [
 const DATA_LAYERS: { id: keyof DataLayersState; label: string }[] = [
   { id: 'parks', label: 'Parks' },
   { id: 'wildfires', label: 'Fires' },
-  { id: 'avalanche', label: 'Avalanche' },
 ]
 
 const DEFAULT_NAME = 'My route'
@@ -75,7 +74,6 @@ export default function App() {
   const [dataLayers, setDataLayers] = useState<DataLayersState>({
     parks: false,
     wildfires: false,
-    avalanche: false,
   })
   const [route, setRoute] = useState<LngLat[]>(routeFromHash)
   const [routeName, setRouteName] = useState(() => getHashParam('n') ?? DEFAULT_NAME)
@@ -215,7 +213,7 @@ export default function App() {
           ))}
         </nav>
       </div>
-      <Legend overlay={overlay} avalanche={dataLayers.avalanche} />
+      <Legend overlay={overlay} />
       <ElevationProfile profile={profile} onHover={setHoverPoint} />
     </div>
   )

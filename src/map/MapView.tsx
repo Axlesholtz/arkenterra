@@ -19,13 +19,7 @@ import {
   registerDemProtocols,
   type DemOverlayKind,
 } from './demProtocol'
-import {
-  avalancheFillColor,
-  fetchAvalancheRegions,
-  parksSource,
-  wildfiresSource,
-  type DataLayersState,
-} from './dataLayers'
+import { parksSource, wildfiresSource, type DataLayersState } from './dataLayers'
 import type { LngLat } from '../route/geo'
 
 registerDemProtocols()
@@ -110,7 +104,6 @@ export default function MapView({
   overlayRef.current = overlay
   const dataRef = useRef(data)
   dataRef.current = data
-  const avalancheLoadedRef = useRef(false)
   const routeRef = useRef(route)
   routeRef.current = route
   const drawingRef = useRef(drawing)
@@ -270,36 +263,6 @@ export default function MapView({
             'text-halo-color': 'rgba(255,255,255,0.85)',
             'text-halo-width': 1,
           },
-        },
-        firstSymbolId,
-      )
-
-      // Avalanche Canada forecast regions (fetched lazily on first toggle)
-      map.addSource('avalanche', {
-        type: 'geojson',
-        data: { type: 'FeatureCollection', features: [] },
-      })
-      const avalancheVisible = dataRef.current.avalanche ? 'visible' : 'none'
-      map.addLayer(
-        {
-          id: 'avalanche-fill',
-          type: 'fill',
-          source: 'avalanche',
-          layout: { visibility: avalancheVisible },
-          paint: {
-            'fill-color': avalancheFillColor(),
-            'fill-opacity': 0.3,
-          },
-        },
-        firstSymbolId,
-      )
-      map.addLayer(
-        {
-          id: 'avalanche-outline',
-          type: 'line',
-          source: 'avalanche',
-          layout: { visibility: avalancheVisible },
-          paint: { 'line-color': '#49555e', 'line-width': 1 },
         },
         firstSymbolId,
       )
@@ -521,26 +484,6 @@ export default function MapView({
       })
     })
 
-    map.on('click', 'avalanche-fill', (e: MapLayerMouseEvent) => {
-      if (drawingRef.current) return
-      const p = e.features?.[0]?.properties
-      if (!p) return
-      const url = String(p.url).replace(/"/g, '%22')
-      new maplibregl.Popup({ maxWidth: '300px' })
-        .setLngLat(e.lngLat)
-        .setHTML(
-          `<div class="avy-popup"><strong>${p.title}</strong>${p.ratingsHtml}` +
-            `<a href="${url}" target="_blank" rel="noreferrer">Full forecast on avalanche.ca ↗</a></div>`,
-        )
-        .addTo(map)
-    })
-    map.on('mouseenter', 'avalanche-fill', () => {
-      if (!drawingRef.current) map.getCanvas().style.cursor = 'pointer'
-    })
-    map.on('mouseleave', 'avalanche-fill', () => {
-      map.getCanvas().style.cursor = drawingRef.current ? 'crosshair' : ''
-    })
-
     map.on('contextmenu', 'route-vertex', (e: MapLayerMouseEvent) => {
       const index = e.features?.[0]?.properties?.index
       if (typeof index !== 'number') return
@@ -588,22 +531,9 @@ export default function MapView({
 
   useEffect(() => {
     const map = mapRef.current
-    if (!map || !map.getLayer('avalanche-fill')) return
+    if (!map || !map.getLayer('parks')) return
     map.setLayoutProperty('parks', 'visibility', data.parks ? 'visible' : 'none')
     map.setLayoutProperty('wildfires', 'visibility', data.wildfires ? 'visible' : 'none')
-    for (const id of ['avalanche-fill', 'avalanche-outline']) {
-      map.setLayoutProperty(id, 'visibility', data.avalanche ? 'visible' : 'none')
-    }
-    if (data.avalanche && !avalancheLoadedRef.current) {
-      avalancheLoadedRef.current = true
-      fetchAvalancheRegions()
-        .then((fc) => {
-          ;(mapRef.current?.getSource('avalanche') as GeoJSONSource | undefined)?.setData(fc)
-        })
-        .catch(() => {
-          avalancheLoadedRef.current = false
-        })
-    }
   }, [data])
 
   useEffect(() => {
