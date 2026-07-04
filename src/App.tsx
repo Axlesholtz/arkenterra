@@ -13,6 +13,7 @@ import {
 import { buildGPX, downloadGPX } from './route/gpx'
 import { deleteRoute, loadRoutes, saveRoute, type SavedRoute } from './route/store'
 import type { BasemapId } from './map/config'
+import type { DataLayersState } from './map/dataLayers'
 
 const BASEMAPS: { id: BasemapId; label: string }[] = [
   { id: 'topo', label: 'Topo' },
@@ -23,6 +24,12 @@ const OVERLAYS: { id: OverlayId; label: string }[] = [
   { id: 'none', label: 'None' },
   { id: 'slope', label: 'Slope' },
   { id: 'aspect', label: 'Aspect' },
+]
+
+const DATA_LAYERS: { id: keyof DataLayersState; label: string }[] = [
+  { id: 'parks', label: 'Parks' },
+  { id: 'wildfires', label: 'Fires' },
+  { id: 'avalanche', label: 'Avalanche' },
 ]
 
 const DEFAULT_NAME = 'My route'
@@ -65,6 +72,11 @@ function routeFromHash(): LngLat[] {
 export default function App() {
   const [basemap, setBasemap] = useState<BasemapId>('satellite')
   const [overlay, setOverlay] = useState<OverlayId>('none')
+  const [dataLayers, setDataLayers] = useState<DataLayersState>({
+    parks: false,
+    wildfires: false,
+    avalanche: false,
+  })
   const [route, setRoute] = useState<LngLat[]>(routeFromHash)
   const [routeName, setRouteName] = useState(() => getHashParam('n') ?? DEFAULT_NAME)
   const [drawing, setDrawing] = useState(false)
@@ -136,6 +148,7 @@ export default function App() {
       <MapView
         basemap={basemap}
         overlay={overlay}
+        data={dataLayers}
         route={route}
         drawing={drawing}
         hoverPoint={hoverPoint}
@@ -190,8 +203,19 @@ export default function App() {
             </button>
           ))}
         </nav>
+        <nav className="toggle-group" aria-label="Data layers">
+          {DATA_LAYERS.map(({ id, label }) => (
+            <button
+              key={id}
+              className={dataLayers[id] ? 'active' : ''}
+              onClick={() => setDataLayers((d) => ({ ...d, [id]: !d[id] }))}
+            >
+              {label}
+            </button>
+          ))}
+        </nav>
       </div>
-      <Legend overlay={overlay} />
+      <Legend overlay={overlay} avalanche={dataLayers.avalanche} />
       <ElevationProfile profile={profile} onHover={setHoverPoint} />
     </div>
   )

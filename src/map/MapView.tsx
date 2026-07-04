@@ -19,6 +19,13 @@ import {
   registerDemProtocols,
   type DemOverlayKind,
 } from './demProtocol'
+import {
+  avalancheFillColor,
+  fetchAvalancheRegions,
+  parksSource,
+  wildfiresSource,
+  type DataLayersState,
+} from './dataLayers'
 import type { LngLat } from '../route/geo'
 
 registerDemProtocols()
@@ -39,6 +46,7 @@ export type OverlayId = DemOverlayKind | 'none'
 interface MapViewProps {
   basemap: BasemapId
   overlay: OverlayId
+  data: DataLayersState
   route: LngLat[]
   drawing: boolean
   hoverPoint: LngLat | null
@@ -86,6 +94,7 @@ function pointData(pt: LngLat | null): FeatureCollection {
 export default function MapView({
   basemap,
   overlay,
+  data,
   route,
   drawing,
   hoverPoint,
@@ -99,6 +108,9 @@ export default function MapView({
   basemapRef.current = basemap
   const overlayRef = useRef(overlay)
   overlayRef.current = overlay
+  const dataRef = useRef(data)
+  dataRef.current = data
+  const avalancheLoadedRef = useRef(false)
   const routeRef = useRef(route)
   routeRef.current = route
   const drawingRef = useRef(drawing)
@@ -120,8 +132,16 @@ export default function MapView({
       maxPitch: 85,
       hash: 'map',
       attributionControl: { compact: true },
+      // Longer glide after a drag — the default stops abruptly
+      dragPan: { linearity: 0, deceleration: 1600, maxSpeed: 1600 },
     })
     mapRef.current = map
+    if (import.meta.env.DEV) {
+      ;(window as unknown as Record<string, unknown>).__arkenmap = map
+    }
+    // Snappier wheel steps, slightly gentler trackpad pinch
+    map.scrollZoom.setWheelZoomRate(1 / 250)
+    map.scrollZoom.setZoomRate(1 / 90)
 
     map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }))
     map.addControl(new maplibregl.ScaleControl({ unit: 'metric' }), 'bottom-right')
@@ -144,6 +164,18 @@ export default function MapView({
           type: 'raster',
           source: 'satellite',
           layout: { visibility: basemapRef.current === 'satellite' ? 'visible' : 'none' },
+        },
+        firstSymbolId,
+      )
+      // Parks sit under the hillshade so terrain shading tints them too
+      map.addSource('parks', parksSource())
+      map.addLayer(
+        {
+          id: 'parks',
+          type: 'raster',
+          source: 'parks',
+          layout: { visibility: dataRef.current.parks ? 'visible' : 'none' },
+          paint: { 'raster-opacity': 0.55 },
         },
         firstSymbolId,
       )
@@ -237,6 +269,158 @@ export default function MapView({
             'text-color': '#6b4f33',
             'text-halo-color': 'rgba(255,255,255,0.85)',
             'text-halo-width': 1,
+          },
+        },
+        firstSymbolId,
+      )
+
+      // Avalanche Canada forecast regions (fetched lazily on first toggle)
+      map.addSource('avalanche', {
+        type: 'geojson',
+        data: { type: 'FeatureCollection', features: [] },
+      })
+      const avalancheVisible = dataRef.current.avalanche ? 'visible' : 'none'
+      map.addLayer(
+        {
+          id: 'avalanche-fill',
+          type: 'fill',
+          source: 'avalanche',
+          layout: { visibility: avalancheVisible },
+          paint: {
+            'fill-color': avalancheFillColor(),
+            'fill-opacity': 0.3,
+          },
+        },
+        firstSymbolId,
+      )
+      map.addLayer(
+        {
+          id: 'avalanche-outline',
+          type: 'line',
+          source: 'avalanche',
+          layout: { visibility: avalancheVisible },
+          paint: { 'line-color': '#49555e', 'line-width': 1 },
+        },
+        firstSymbolId,
+      )
+
+      // Trails/peaks/huts already live in the OpenFreeMap tiles — the base
+      // style just barely shows them. Style them like an outdoor map, on
+      // both basemaps.
+      map.addLayer(
+        {
+          id: 'trails',
+          type: 'line',
+          source: 'openmaptiles',
+          'source-layer': 'transportation',
+          minzoom: 11,
+          filter: [
+            'all',
+            ['match', ['geometry-type'], ['LineString', 'MultiLineString'], true, false],
+            ['match', ['get', 'class'], ['path', 'track'], true, false],
+            ['match', ['get', 'subclass'], ['steps', 'corridor', 'platform'], false, true],
+          ],
+          layout: { 'line-cap': 'round', 'line-join': 'round' },
+          paint: {
+            'line-color': '#d64524',
+            'line-dasharray': [2.5, 1.5],
+            'line-width': ['interpolate', ['linear'], ['zoom'], 11, 0.7, 14, 1.6, 16, 2.6],
+          },
+        },
+        firstSymbolId,
+      )
+
+      map.addSource('wildfires', wildfiresSource())
+      map.addLayer(
+        {
+          id: 'wildfires',
+          type: 'raster',
+          source: 'wildfires',
+          layout: { visibility: dataRef.current.wildfires ? 'visible' : 'none' },
+          paint: { 'raster-opacity': 0.85 },
+        },
+        firstSymbolId,
+      )
+
+      map.addLayer(
+        {
+          id: 'peak-labels',
+          type: 'symbol',
+          source: 'openmaptiles',
+          'source-layer': 'mountain_peak',
+          minzoom: 10,
+          filter: ['all', ['has', 'name'], ['==', ['get', 'class'], 'peak']],
+          layout: {
+            'text-field': [
+              'case',
+              ['has', 'ele'],
+              ['concat', '▲ ', ['get', 'name'], '\n', ['get', 'ele'], ' m'],
+              ['concat', '▲ ', ['get', 'name']],
+            ],
+            'text-font': ['Noto Sans Regular'],
+            'text-size': 10.5,
+            'text-anchor': 'top',
+          },
+          paint: {
+            'text-color': '#4a3f35',
+            'text-halo-color': 'rgba(255,255,255,0.9)',
+            'text-halo-width': 1.2,
+          },
+        },
+        firstSymbolId,
+      )
+      map.addLayer(
+        {
+          id: 'hut-points',
+          type: 'circle',
+          source: 'openmaptiles',
+          'source-layer': 'poi',
+          minzoom: 11,
+          filter: [
+            'match',
+            ['get', 'subclass'],
+            ['alpine_hut', 'wilderness_hut', 'shelter'],
+            true,
+            false,
+          ],
+          paint: {
+            'circle-radius': 4,
+            'circle-color': '#8b2f1d',
+            'circle-stroke-color': '#ffffff',
+            'circle-stroke-width': 1.2,
+          },
+        },
+        firstSymbolId,
+      )
+      map.addLayer(
+        {
+          id: 'hut-labels',
+          type: 'symbol',
+          source: 'openmaptiles',
+          'source-layer': 'poi',
+          minzoom: 12,
+          filter: [
+            'all',
+            ['has', 'name'],
+            [
+              'match',
+              ['get', 'subclass'],
+              ['alpine_hut', 'wilderness_hut', 'shelter'],
+              true,
+              false,
+            ],
+          ],
+          layout: {
+            'text-field': ['get', 'name'],
+            'text-font': ['Noto Sans Regular'],
+            'text-size': 10,
+            'text-anchor': 'top',
+            'text-offset': [0, 0.7],
+          },
+          paint: {
+            'text-color': '#6b2416',
+            'text-halo-color': 'rgba(255,255,255,0.9)',
+            'text-halo-width': 1.1,
           },
         },
         firstSymbolId,
@@ -337,6 +521,26 @@ export default function MapView({
       })
     })
 
+    map.on('click', 'avalanche-fill', (e: MapLayerMouseEvent) => {
+      if (drawingRef.current) return
+      const p = e.features?.[0]?.properties
+      if (!p) return
+      const url = String(p.url).replace(/"/g, '%22')
+      new maplibregl.Popup({ maxWidth: '300px' })
+        .setLngLat(e.lngLat)
+        .setHTML(
+          `<div class="avy-popup"><strong>${p.title}</strong>${p.ratingsHtml}` +
+            `<a href="${url}" target="_blank" rel="noreferrer">Full forecast on avalanche.ca ↗</a></div>`,
+        )
+        .addTo(map)
+    })
+    map.on('mouseenter', 'avalanche-fill', () => {
+      if (!drawingRef.current) map.getCanvas().style.cursor = 'pointer'
+    })
+    map.on('mouseleave', 'avalanche-fill', () => {
+      map.getCanvas().style.cursor = drawingRef.current ? 'crosshair' : ''
+    })
+
     map.on('contextmenu', 'route-vertex', (e: MapLayerMouseEvent) => {
       const index = e.features?.[0]?.properties?.index
       if (typeof index !== 'number') return
@@ -381,6 +585,26 @@ export default function MapView({
       )
     }
   }, [overlay])
+
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !map.getLayer('avalanche-fill')) return
+    map.setLayoutProperty('parks', 'visibility', data.parks ? 'visible' : 'none')
+    map.setLayoutProperty('wildfires', 'visibility', data.wildfires ? 'visible' : 'none')
+    for (const id of ['avalanche-fill', 'avalanche-outline']) {
+      map.setLayoutProperty(id, 'visibility', data.avalanche ? 'visible' : 'none')
+    }
+    if (data.avalanche && !avalancheLoadedRef.current) {
+      avalancheLoadedRef.current = true
+      fetchAvalancheRegions()
+        .then((fc) => {
+          ;(mapRef.current?.getSource('avalanche') as GeoJSONSource | undefined)?.setData(fc)
+        })
+        .catch(() => {
+          avalancheLoadedRef.current = false
+        })
+    }
+  }, [data])
 
   useEffect(() => {
     const map = mapRef.current
