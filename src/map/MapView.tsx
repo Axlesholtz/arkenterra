@@ -37,6 +37,14 @@ contourSource.setupMaplibre(maplibregl)
 
 export type OverlayId = DemOverlayKind | 'none'
 
+export interface FlyTarget {
+  lng: number
+  lat: number
+  zoom: number
+  /** Changes on every request so repeat searches of the same place re-fly */
+  id: number
+}
+
 interface MapViewProps {
   basemap: BasemapId
   overlay: OverlayId
@@ -45,6 +53,7 @@ interface MapViewProps {
   drawing: boolean
   hoverPoint: LngLat | null
   fitRouteSignal: number
+  flyTarget: FlyTarget | null
   onRouteChange: (coords: LngLat[]) => void
   onFinishDrawing: () => void
 }
@@ -93,6 +102,7 @@ export default function MapView({
   drawing,
   hoverPoint,
   fitRouteSignal,
+  flyTarget,
   onRouteChange,
   onFinishDrawing,
 }: MapViewProps) {
@@ -566,6 +576,17 @@ export default function MapView({
     )
     map.fitBounds(bounds, { padding: 80, duration: 1200 })
   }, [fitRouteSignal])
+
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !flyTarget) return
+    map.flyTo({
+      center: [flyTarget.lng, flyTarget.lat],
+      zoom: flyTarget.zoom,
+      pitch: 65,
+      duration: 2500,
+    })
+  }, [flyTarget])
 
   return <div ref={containerRef} className="map-container" />
 }

@@ -298,3 +298,100 @@ body,
   fill: rgba(230, 237, 243, 0.6);
   font-size: 10px;
 }
+
+.search-bar {
+  position: absolute;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(320px, calc(100vw - 420px));
+  min-width: 200px;
+}
+
+.search-bar input {
+  width: 100%;
+  appearance: none;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 10px;
+  background: rgba(16, 24, 32, 0.72);
+  backdrop-filter: blur(8px);
+  color: #f2f6fa;
+  font: inherit;
+  font-size: 0.85rem;
+  padding: 8px 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+}
+
+.search-bar input::placeholder {
+  color: rgba(205, 216, 226, 0.6);
+}
+
+.search-bar input:focus {
+  outline: none;
+  border-color: #3d7bb8;
+}
+
+.search-results {
+  list-style: none;
+  margin-top: 6px;
+  border-radius: 10px;
+  overflow: hidden;
+  background: rgba(16, 24, 32, 0.88);
+  backdrop-filter: blur(8px);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+}
+
+.search-results button {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  width: 100%;
+  appearance: none;
+  border: none;
+  background: transparent;
+  color: #e6edf3;
+  font: inherit;
+  text-align: left;
+  padding: 7px 12px;
+  cursor: pointer;
+}
+
+.search-results button.highlight {
+  background: rgba(61, 123, 184, 0.45);
+}
+
+.search-name {
+  font-size: 0.85rem;
+}
+
+.search-detail {
+  font-size: 0.7rem;
+  opacity: 0.65;
+}
+
+/* Scale bar: glass pill with bracket ticks instead of the default grey box */
+.maplibregl-ctrl-scale {
+  background: rgba(16, 24, 32, 0.6);
+  backdrop-filter: blur(8px);
+  color: #e6edf3;
+  font-size: 0.68rem;
+  text-align: center;
+  border: none;
+  border-left: 2px solid rgba(143, 193, 238, 0.9);
+  border-right: 2px solid rgba(143, 193, 238, 0.9);
+  border-bottom: 2px solid rgba(143, 193, 238, 0.9);
+  border-radius: 0 0 8px 8px;
+  padding: 1px 6px 2px;
+}
+
+/* Attribution: translucent strip instead of a solid white bar */
+.maplibregl-ctrl-attrib {
+  background: rgba(255, 255, 255, 0.45) !important;
+  backdrop-filter: blur(6px);
+  border-radius: 8px 0 0 0;
+  font-size: 0.68rem;
+}
+
+.maplibregl-ctrl-attrib.maplibregl-compact {
+  background: rgba(255, 255, 255, 0.45) !important;
+}

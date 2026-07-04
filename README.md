@@ -39,7 +39,9 @@ npm run dev
    computed in a web worker from the same elevation tiles)
 5. ✅ Open data layers: trails/peaks/huts styled from the OpenFreeMap tiles;
    BC parks & rec sites and current wildfires (DataBC WMS)
-6. Later: light backend (accounts, saved/shared routes), community content
+6. ✅ Place search ([Photon](https://photon.komoot.io/) geocoder, BC-biased)
+   with fly-to
+7. Later: light backend (accounts, saved/shared routes), community content
 
 ## Deploy
 

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
-import MapView, { type OverlayId } from './map/MapView'
+import MapView, { type FlyTarget, type OverlayId } from './map/MapView'
 import Legend from './Legend'
+import Search, { type SearchResult } from './Search'
 import RoutePanel from './route/RoutePanel'
 import ElevationProfile from './route/ElevationProfile'
 import { useRouteProfile } from './route/useRouteProfile'
@@ -82,6 +83,7 @@ export default function App() {
   const [saved, setSaved] = useState<SavedRoute[]>(loadRoutes)
   const [copied, setCopied] = useState(false)
   const [fitRouteSignal, setFitRouteSignal] = useState(0)
+  const [flyTarget, setFlyTarget] = useState<FlyTarget | null>(null)
 
   const profile = useRouteProfile(route)
 
@@ -132,6 +134,21 @@ export default function App() {
     }
   }
 
+  const handleSearchSelect = (r: SearchResult) => {
+    // Rough zoom from the feature's extent: whole parks get a wide view,
+    // a single lake or trailhead gets a close one.
+    let zoom = 12.5
+    if (r.extent) {
+      const span = Math.max(
+        Math.abs(r.extent[2] - r.extent[0]),
+        Math.abs(r.extent[1] - r.extent[3]) * 2,
+        0.002,
+      )
+      zoom = Math.min(14, Math.max(6, Math.log2(360 / span) - 1))
+    }
+    setFlyTarget({ lng: r.lng, lat: r.lat, zoom, id: Date.now() })
+  }
+
   const handleLoad = (id: string) => {
     const r = saved.find((s) => s.id === id)
     if (!r) return
@@ -151,9 +168,11 @@ export default function App() {
         drawing={drawing}
         hoverPoint={hoverPoint}
         fitRouteSignal={fitRouteSignal}
+        flyTarget={flyTarget}
         onRouteChange={setRoute}
         onFinishDrawing={finishDrawing}
       />
+      <Search onSelect={handleSearchSelect} />
       <header className="brand">
         <h1>ArkenTerra</h1>
         <p>BC backcountry in 3D</p>
